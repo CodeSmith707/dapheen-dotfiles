@@ -12,6 +12,9 @@ browser    = "brave"
 ---- AUTOSTART ----
 
 hl.on("hyprland.start", function()
+    -- Reload Hyprland plugins in a Kitty terminal
+    hl.exec_cmd("hyprpm reload -n")
+
     -- hl.exec_cmd("dunst") replaced with quickshell notifications
     hl.exec_cmd("nm-applet")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
@@ -32,7 +35,7 @@ hl.env("MOZ_ENABLE_WAYLAND", "1")
 
 hl.config({
     input = {
-        kb_layout = "us,latam",
+        kb_layout = "us",
         follow_mouse = 1,
         sensitivity = 0.5,
         touchpad = {
@@ -67,3 +70,20 @@ require("rules")
 
 -- HyprMod managed settings
 require("hyprland-gui")
+
+hl.config({
+    plugin = {
+        scrolloverview = {
+            gesture_distance = 300,
+            scale = 0.5,
+            workspace_gap = 100,
+            layout = "vertical",
+            wallpaper = 2,
+            blur = true,
+            shadow = {
+                enabled = true,
+                range = 50,
+            },
+        },
+    },
+})

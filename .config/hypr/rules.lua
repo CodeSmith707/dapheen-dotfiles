@@ -19,6 +19,50 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name = "firefox-opacity",
+    match = { class = "^(firefox)$" },
+    opacity = "0.90 override",
+})
+
+hl.window_rule({
+    name = "spotify-opacity",
+    match = { class = "^(Spotify)$" },
+    opacity = "0.85 override",
+})
+
+hl.window_rule({
+    name = "thunar-opacity",
+    match = { class = "^(Thunar)$" },
+    opacity = "0.85 override",
+})
+
+hl.window_rule({
+    name = "steam-opacity",
+    match = {
+        class = "steam",
+    },
+    opacity = 0.85,
+})
+
+hl.window_rule({
+    name = "obsidian-opacity",
+    match = { class = "^(md\\.obsidian\\.Obsidian)$" },
+    opacity = "0.90 override",
+})
+
+hl.window_rule({
+    name = "discord-opacity",
+    match = { class = "^(discord)$" },
+    opacity = "0.90 override",
+})
+
+hl.window_rule({
+    name = "code-oss-opacity",
+    match = { class = "^(code-oss)$" },
+    opacity = "0.90 override",
+})
+
+hl.window_rule({
     match = { class = ".*", fullscreen = true },
     opacity = "1.0 override",
 })

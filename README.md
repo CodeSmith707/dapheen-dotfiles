@@ -1,14 +1,14 @@
 <div align="center">
 
-## Hyprland Setup by 43pr メ
+## Dapheen — My Hyprland Dotfiles
 
 A clean and simple Hyprland setup focused on practical keybinds, productivity, and easy to customize.
 
+This repository is my personal customization of the original [43PR/dotfiles](https://github.com/43PR/dotfiles) project. Credit goes to **43PR** for the original setup. My changes include the Dapheen theme-system migration, custom widgets, keybindings, application styling, and other personal modifications.
+
 ![Hyprland](https://img.shields.io/badge/Hyprland-0.56.2-8b9aaf?style=for-the-badge&labelColor=101418)
-![GitHub repo size](https://img.shields.io/github/repo-size/43PR/dotfiles?style=for-the-badge&labelColor=101418&color=8b9aaf)
+![GitHub repo size](https://img.shields.io/github/repo-size/CodeSmith707/dapheen-dotfiles?style=for-the-badge&labelColor=101418&color=8b9aaf)
 [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2FHQwU9SzHj%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&style=for-the-badge&logo=discord&logoColor=ffffff&label=discord&labelColor=101418&color=7289a8)](https://discord.gg/HQwU9SzHj)
-[![YouTube](https://img.shields.io/badge/youtube-subscribe-b05a63?style=for-the-badge&logo=youtube&logoColor=ffffff&labelColor=101418)](https://www.youtube.com/@43PR2)
-[![Ko-Fi donate](https://img.shields.io/badge/donate-kofi?style=for-the-badge&logo=ko-fi&logoColor=ffffff&label=ko-fi&labelColor=101418&color=9a6570)](https://ko-fi.com/43pr)
 
 ### **[Features](#features)  -  [Keybinds](#most-used-keybinds)  -  [Installation](#installation) -  [Updating](#updating)**
 
@@ -19,8 +19,6 @@ A clean and simple Hyprland setup focused on practical keybinds, productivity, a
 <img width="1920" height="1080" alt="v1 2 0" src="https://github.com/user-attachments/assets/3b4857bc-285a-473a-924c-be89dab714b9" />
 
 <img width="1920" height="1080" alt="1791338767" src="https://github.com/user-attachments/assets/d2b9999a-9939-410d-9980-11e97b448d78" />
-
-Wallpapers: https://wallhaven.cc/user/43pr
 
 ## Features
 
@@ -95,7 +93,7 @@ sudo pacman -S git
 ```
 
 ```bash
-git clone https://github.com/43PR/dotfiles.git
+git clone https://github.com/CodeSmith707/dapheen-dotfiles.git
 cd dotfiles
 chmod +x install.sh
 ./install.sh

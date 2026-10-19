@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# .config/43pr/bin/theme.py
-"""43PR theme controller: presets + Matugen -> one semantic palette -> app files."""
+# .config/dapheen/bin/theme.py
+"""DAPHEEN theme controller: presets + Matugen -> one semantic palette -> app files."""
 import argparse, colorsys, fcntl, json, os, re, shutil, subprocess, sys, tempfile, tomllib
 from contextlib import contextmanager
 from pathlib import Path
 
 HOME = Path.home()
 CFG = Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config"))
-CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "43pr"
-STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "43pr"
-ROOT = CFG / "43pr"
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", HOME / ".cache")) / "dapheen"
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local/state")) / "dapheen"
+ROOT = CFG / "dapheen"
 THEMES = ROOT / "themes"
 TARGETS = ROOT / "targets.toml"
 MATUGEN_CFG = CFG / "matugen" / "config.toml"
@@ -43,7 +43,7 @@ def warn(msg):
 
 def atomic_write(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.43pr-tmp")
+    tmp = path.with_name(f".{path.name}.dapheen-tmp")
     tmp.write_text(text)
     os.replace(tmp, path)
 
@@ -92,11 +92,14 @@ def set_ini_key(path, key, value):
 
 
 def sync_gtk_ini(dark):
-    """GTK3 ignores color-scheme; it follows prefer-dark-theme from settings.ini."""
+    """Sync GTK theme name and dark preference for GTK3 and GTK4."""
+    theme = resolve_gtk_theme(dark)
     for d in ("gtk-3.0", "gtk-4.0"):
         try:
-            set_ini_key(CFG / d / "settings.ini",
-                        "gtk-application-prefer-dark-theme", int(dark))
+            path = CFG / d / "settings.ini"
+            set_ini_key(path, "gtk-application-prefer-dark-theme", int(dark))
+            if theme:
+                set_ini_key(path, "gtk-theme-name", theme)
         except Exception as e:
             warn(f"could not update {d}/settings.ini: {e}")
 
@@ -171,7 +174,7 @@ def merged(colors):
 
 
 def preset_path(name):
-    if name == "43pr-default":
+    if name == "dapheen-default":
         name = "default"
     if not NAME.match(name):
         die(f"invalid preset name: {name!r}")
@@ -301,7 +304,7 @@ def apply_palette(pal):
                 hooks.append(t["reload"])
         for f, dst in staged:                      # 2. only then replace files
             dst.parent.mkdir(parents=True, exist_ok=True)
-            tmp = dst.with_name(f".{dst.name}.43pr-tmp")
+            tmp = dst.with_name(f".{dst.name}.dapheen-tmp")
             shutil.copyfile(f, tmp)
             os.replace(tmp, dst)
         atomic_write(PALETTE, json.dumps(pal, indent=2))
@@ -374,7 +377,7 @@ def cmd_preset(a):
             ensure_fallback()
             die(f"theme unchanged: {e}")
         st = load_state()
-        st.update(mode="preset", preset="default" if a.name == "43pr-default" else a.name)
+        st.update(mode="preset", preset="default" if a.name == "dapheen-default" else a.name)
         sync_appearance(st, pal, data.get("appearance"))   # light/dark GTK follows the preset
         save_state(st)
     print(f"theme: preset '{a.name}' applied")
@@ -404,6 +407,36 @@ def cmd_apply(a):
     print("theme: re-rendered")
 
 
+def sync_thunar_theme(dark):
+    """Restart running Thunar with the matching GTK variant."""
+    if not shutil.which("thunar"):
+        return
+    running = subprocess.run(
+        ["pgrep", "-u", str(os.getuid()), "-x", "thunar"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if not running:
+        return
+
+    variant = "dark" if dark else "light"
+    subprocess.run(
+        ["thunar", "-q"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=5,
+    )
+    subprocess.Popen(
+        ["env", f"GTK_THEME=Adwaita:{variant}", "thunar"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    print(f"Thunar restarted with GTK {variant} variant")
+
+
 def cmd_mode(a):
     if a.value not in ("dark", "light"):
         die("mode must be 'dark' or 'light'")
@@ -416,6 +449,19 @@ def cmd_mode(a):
         cmd_wallpaper(argparse.Namespace(path=wp))
     else:
         print(f"theme: mode set to {a.value} (no wallpaper active; will apply on next 'wallpaper' or 'auto')")
+    # Keep Spicetify in sync with the desktop appearance.
+    sync_script = HOME / ".config/dapheen/bin/sync-app-mode.py"
+    if sync_script.is_file():
+        try:
+            r = subprocess.run(
+                [sys.executable, str(sync_script)],
+                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30
+            )
+            if r.returncode != 0:
+                warn(f"app mode sync failed: {(r.stderr or r.stdout).strip()}")
+        except Exception as e:
+            warn(f"app mode sync failed: {e}")
+    sync_thunar_theme(a.value == "dark")
 
 
 def cmd_colorgen(a):

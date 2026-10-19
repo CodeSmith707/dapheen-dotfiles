@@ -45,16 +45,16 @@ bash: spicetify apply */
 
     --font-size-lyrics: 24px; /* 1.5em (default) */
 
-    --font-family-header: "asciid";
+    --font-family-header: 'Xanh Mono', monospace;
     --font-size-multiplier-header: 4;
 
     --display-card-image: block; /* none | block */
-    --display-coverart-image: none; 
-    --display-header-image: block; 
+    --display-coverart-image: none;
+    --display-header-image: block;
     --display-sidebar-image: block;
-    --display-tracklist-image: block; 
-    --display-spicetify-banner-ascii: block; 
-    --display-music-banner-ascii: none; 
+    --display-tracklist-image: block;
+    --display-spicetify-banner-ascii: none;
+    --display-music-banner-ascii: block;
 
     --border-radius: 4px;
     --border-width: 1px;
@@ -81,7 +81,7 @@ bash: spicetify apply */
 }
 .main-entityHeader-title h1,
 .main-entityHeader-title span {
-    font-family: var(--font-family-header) !important;
+    font-family: var(--font-family) !important;
     font-size: calc(
         var(--font-size) * var(--font-size-multiplier-header)
     ) !important;
@@ -666,7 +666,7 @@ form .main-topBar-searchBar:placeholder-shown {
    / ___/ __ \\/ __ \\/ __/ / /_/ / / /_____/ __/ / / / /\A
   (__  ) /_/ / /_/ / /_/ / __/ /_/ /_____/ /_/ /_/ / /\A
  /____/ .___/\\____/\\__/_/_/  \\__, /      \\__/\\__,_/_/\A
-     /_/                    /____/                      
+     /_/                    /____/
 
 */
 .view-homeShortcutsGrid-shortcuts::before {

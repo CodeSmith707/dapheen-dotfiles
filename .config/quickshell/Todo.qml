@@ -384,8 +384,7 @@ PanelWindow {
                         anchors.leftMargin: root.px(10)
                         anchors.right: parent.right
                         anchors.rightMargin: root.px(12)
-                        anchors.top: parent.top
-                        anchors.topMargin: root.px(12)
+                        anchors.verticalCenter: addThumb.verticalCenter
                         font.pixelSize: root.px(12)
                         color: Theme.text
                         selectionColor: Theme.accent

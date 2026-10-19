@@ -4,3 +4,16 @@
 .config/kitty/matugen.conf
 .config/rofi/colors.rasi
 .config/quickshell/state/
+
+# Backup files and temporary editor files
+**/*backup*
+**/*.bak*
+**/*.old
+**/*.orig
+**/*.save
+**/*~
+**/*.swp
+**/*.swo
+**/*.tmp
+**/*.temp
+**/backups/**

@@ -1,10 +1,11 @@
+
 #!/usr/bin/env bash
+set -uo pipefail
 
 CONFIG="$1/config.json"
 
 expand_home() {
     local path="$1"
-
     if [[ "$path" == '$HOME' ]]; then
         printf '%s\n' "$HOME"
     elif [[ "$path" == '$HOME/'* ]]; then
@@ -16,35 +17,34 @@ expand_home() {
 
 wallpaper_path=$(expand_home "$(jq -r '.wallpaper_path' "$CONFIG")")
 cache_path=$(expand_home "$(jq -r '.cache_path' "$CONFIG")")
-cache_batch_size=$(jq -r '.cache_batch_size' "$CONFIG")
+cache_batch_size=$(jq -r '.cache_batch_size // 4' "$CONFIG")
 
 mkdir -p "$cache_path"
 
-echo "Wallpaper path: $wallpaper_path"
-echo "Cache path: $cache_path"
-
-find "$wallpaper_path" -type f \( \
+find "$wallpaper_path" -maxdepth 1 -type f \( \
     -iname "*.jpg" -o \
     -iname "*.jpeg" -o \
-    -iname "*.png" \
-\) | while read -r img; do
-
+    -iname "*.png" -o \
+    -iname "*.webp" \
+\) -print0 |
+while IFS= read -r -d '' img; do
     filename=$(basename "$img")
     out="$cache_path/$filename"
 
-    if [[ -f "$out" ]]; then
+    # Skip only a valid, non-empty cached image.
+    if [[ -s "$out" ]] && identify "$out" >/dev/null 2>&1; then
         continue
     fi
 
-    echo "Generating thumbnail for $filename"
-    convert "$img" -thumbnail x500 -strip -quality 85 "$out" &
+    tmp=$(mktemp "$cache_path/.thumb.XXXXXX") || continue
 
-    if (( cache_batch_size > 0 )); then
-        while (( $(jobs -rp | wc -l) >= cache_batch_size )); do
-            wait -n
-        done
+    if convert "$img" -thumbnail x500 -strip -quality 85 "$tmp" \
+        && identify "$tmp" >/dev/null 2>&1; then
+        mv -f -- "$tmp" "$out"
+    else
+        rm -f -- "$tmp"
+        printf 'Failed to cache: %s\n' "$img" >&2
     fi
 done
 
-wait
-echo "Thumbnail generation complete."
+printf 'Thumbnail generation complete.\n'

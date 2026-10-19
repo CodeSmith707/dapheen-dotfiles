@@ -12,13 +12,13 @@ PanelWindow {
     readonly property real refHeight: 500
     property int speed: 5000
     property int animDuration: 1000
-    property real zoomScale: 0.8
-    property real edgeScale: 0.3
+    property real zoomScale: 0.94
+    property real edgeScale: 0.50
     property real skewFactor: 0
     property real baseSpacing: 0
-    property real edgeSpacing: 80
+    property real edgeSpacing: 28
     property int startPosition: 4
-    property bool shadowEnabled: true
+    property bool shadowEnabled: false
     property color shadowColor: "#000000"
     property real shadowOpacity: 0.4
     property real shadowBlur: 0.45
@@ -63,6 +63,18 @@ PanelWindow {
             property string cache_path
             property int number_of_pictures
             property string border_color
+        }
+    }
+
+    FileView {
+        id: wallpaperStateFile
+        path: Quickshell.env("HOME") + "/.local/state/dapheen/state.json"
+        watchChanges: true
+        onFileChanged: reload()
+
+        JsonAdapter {
+            id: wallpaperState
+            property string wallpaper
         }
     }
 
@@ -139,15 +151,24 @@ PanelWindow {
         property int selectedIndex: main.startPosition
 
         readonly property real tileHeight: main.refHeight * main.ui
-        readonly property real tileWidth: (main.refWidth / Math.max(1, configs.number_of_pictures) - 10) * main.ui
+        readonly property real visualTileWidth: main.refHeight * 1.55 * main.ui
+        readonly property real tileWidth: visualTileWidth
 
         readonly property real viewportCenterX: width / 2
         readonly property real falloffRadius: (main.refWidth / 2) * main.ui
 
-        readonly property real step: tileWidth + main.baseSpacing * main.ui
-        readonly property real sideMargin: Math.max(0, viewportCenterX - tileWidth / 2)
+        readonly property real step: tileWidth * 0.68 + main.baseSpacing * main.ui
+        readonly property real sideMargin: Math.max(0, viewportCenterX - step / 2)
         property bool ready: false
         property bool userMoved: false
+        property bool hoverArmed: false
+
+        Timer {
+            id: hoverArmTimer
+            interval: 200
+            repeat: false
+            onTriggered: list.hoverArmed = true
+        }
 
         leftMargin: sideMargin
         rightMargin: sideMargin
@@ -156,10 +177,43 @@ PanelWindow {
         function ensureVisibleAnimated(i) { contentX = i * step }
 
         function centerOnStart() {
-            if (userMoved || count <= 0 || configs.number_of_pictures <= 0) return
-            selectedIndex = clampIndex(main.startPosition)
+            if (userMoved || count <= 0)
+                return
+
+            const currentPath = String(wallpaperState.wallpaper || "")
+            let currentIndex = -1
+
+            // First try the complete path.
+            if (currentPath !== "") {
+                for (let i = 0; i < count; i++) {
+                    const modelPath = String(folderModel.get(i, "filePath") || "")
+                    if (modelPath === currentPath) {
+                        currentIndex = i
+                        break
+                    }
+                }
+
+                // Fall back to the filename if path formats differ.
+                if (currentIndex < 0) {
+                    const currentName = currentPath.split("/").pop()
+                    for (let i = 0; i < count; i++) {
+                        if (String(folderModel.get(i, "fileName")) === currentName) {
+                            currentIndex = i
+                            break
+                        }
+                    }
+                }
+            }
+
+            selectedIndex = clampIndex(
+                currentIndex >= 0 ? currentIndex : main.startPosition
+            )
+
+            // Prevent a stationary pointer from changing the initial selection.
+            hoverArmed = false
             contentX = selectedIndex * step
             ready = true
+            hoverArmTimer.restart()
         }
 
         function activateCurrent() {
@@ -182,6 +236,14 @@ PanelWindow {
             function onNumber_of_picturesChanged() { list.centerOnStart() }
         }
 
+        Connections {
+            target: wallpaperState
+
+            function onWallpaperChanged() {
+                list.centerOnStart()
+            }
+        }
+
         Behavior on contentX {
             enabled: list.ready
             SmoothedAnimation { id: anim; property real velocity: main.speed; duration: main.animDuration }
@@ -189,12 +251,13 @@ PanelWindow {
 
         delegate: Item {
             id: delegateItem
-            width: list.tileWidth
+            width: list.step
             height: list.tileHeight
 
             property bool active: index === list.selectedIndex
+            z: active ? 3 : 1
             readonly property real baseWidth: list.tileWidth
-            readonly property real baseCenterX: x - list.contentX + baseWidth / 2
+            readonly property real baseCenterX: x - list.contentX + width / 2
             readonly property real distance: Math.abs(baseCenterX - list.viewportCenterX)
             readonly property real fraction: Math.min(1, distance / list.falloffRadius)
             readonly property real compression: { const t = fraction; return t * t * t * t }
@@ -212,7 +275,7 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 width: delegateItem.baseWidth * delegateItem.scaleFactor
                 height: delegateItem.height * Math.min(1, delegateItem.scaleFactor)
-                x: (delegateItem.baseWidth - width) / 2 + delegateItem.edgeOffset
+                x: (delegateItem.width - width) / 2 + delegateItem.edgeOffset
 
                 Image {
                     id: shadowImage
@@ -279,14 +342,29 @@ PanelWindow {
                 }
             }
 
+
+
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: list.ready
-                onEntered: { list.userMoved = true; list.selectedIndex = index }
+
+                // Select only after actual pointer movement, not on overlay opening.
+                onPositionChanged: function(mouse) {
+                    if (!list.hoverArmed)
+                        return
+
+                    list.userMoved = true
+                    list.selectedIndex = index
+                }
+
                 onClicked: list.activateCurrent()
-                onWheel: function(wheel) { list.flick(-wheel.angleDelta.y * 8, 0); wheel.accepted = true }
+
+                onWheel: function(wheel) {
+                    list.flick(-wheel.angleDelta.y * 8, 0)
+                    wheel.accepted = true
+                }
             }
-        }
+         }
 
         Keys.onPressed: function(event) {
             if (event.key === Qt.Key_Space) {

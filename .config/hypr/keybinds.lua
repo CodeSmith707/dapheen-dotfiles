@@ -19,17 +19,23 @@ hl.bind(mainMod .. " + GRAVE", hl.dsp.exec_cmd("qs ipc call powermenu toggle")) 
 
 hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("qs ipc call settings toggle")) -- Settings
 
+hl.bind(mainMod .. " + COMMA", hl.dsp.exec_cmd("qs ipc call emoji toggle"))
+
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs -n -p ~/.config/quickshell/hyprquickpaper")) -- Wallpapers
 
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = 0 })) -- Fullscreen
 
 hl.bind(mainMod .. " + O", hl.dsp.exec_cmd(home .. "/.config/hypr/scripts/opacity.sh")) -- Opacity
 
-hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("python3 " .. home .. "/.config/43pr/bin/theme.py toggle")) -- Light/dark toggle
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("python3 " .. home .. "/.config/dapheen/bin/theme.py toggle")) -- Light/dark toggle
 
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notifications toggle")) -- Notifications
 
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call todo toggle"))  -- To-do
+
+hl.bind("ALT + tab", function()
+    hl.plugin.scrolloverview.overview("toggle all")
+end) -- scroll overview workspaces
 
 -- Mouse move/resize window
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
@@ -40,15 +46,30 @@ hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs ipc call bar toggle")) --
 -- Clipboard
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("pgrep -x rofi >/dev/null && pkill -x rofi || cliphist list | rofi -dmenu -p '' | cliphist decode | wl-copy"))
 
--- Screenshot fullscreen
-hl.bind("Delete", hl.dsp.exec_cmd("sh -c 'file=" .. home .. "/Pictures/$(date +%s).png; grim \"$file\"; wl-copy < \"$file\"; qs ipc call screenshot notify \"$file\"'"))
--- Screenshot area select
-hl.bind("SHIFT + Delete", hl.dsp.exec_cmd("sh -c 'file=" .. home .. "/Pictures/$(date +%s).png; grim -g \"$(slurp)\" \"$file\"; wl-copy < \"$file\"; qs ipc call screenshot notify \"$file\"'"))
+-- Keyboard shortcuts cheat sheet
+hl.bind(mainMod .. " + SLASH", hl.dsp.exec_cmd(
+    "qs ipc call keybinds toggle"
+))
+
+-- -- Screenshot fullscreen
+-- hl.bind("Delete", hl.dsp.exec_cmd("sh -c 'file=" .. home .. "/Pictures/$(date +%s).png; grim \"$file\"; wl-copy < \"$file\"; qs ipc call screenshot notify \"$file\"'"))
+-- -- Screenshot area select
+-- hl.bind("SHIFT + Delete", hl.dsp.exec_cmd("sh -c 'file=" .. home .. "/Pictures/$(date +%s).png; grim -g \"$(slurp)\" \"$file\"; wl-copy < \"$file\"; qs ipc call screenshot notify \"$file\"'"))
+
+
+-- Screenshot fullscreen with Satty
+hl.bind("Delete", hl.dsp.exec_cmd(
+    "sh -c 'file=\"$HOME/Pictures/$(date +%s).png\"; grim -t ppm - | satty --filename - --fullscreen --copy-command wl-copy --output-filename \"$file\"'"
+))
+-- Screenshot area select with Satty
+hl.bind("SHIFT + Delete", hl.dsp.exec_cmd(
+    "sh -c 'file=\"$HOME/Pictures/$(date +%s).png\"; grim -t ppm -g \"$(slurp)\" - | satty --filename - --copy-command wl-copy --output-filename \"$file\"'"
+))
 
 -- Keyboard layout
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("hyprctl switchxkblayout current next"))
 
--- Toggle float window, center and rezise
+-- -- Toggle float window, center and rezise
 hl.bind(mainMod .. " + Space", function()
     hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
 
@@ -100,20 +121,22 @@ hl.bind(mainMod .. " + code:86", function() zoomfunction(0.3) end, { repeating =
 -- dispatcher call when moving to Lua.
 hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exit())
 
--- Focus (H/J/K/L = left/down/up/right, vim-style, matching your original)
-hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "down" }))
-hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "up" }))
-hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
+
+-- Focus/select windows using Super + Arrow keys
+hl.bind(mainMod .. " + LEFT",  hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + RIGHT", hl.dsp.focus({ direction = "right" }))
+hl.bind(mainMod .. " + UP",    hl.dsp.focus({ direction = "up" }))
+hl.bind(mainMod .. " + DOWN",  hl.dsp.focus({ direction = "down" }))
+
 
 -- VERIFY: move active window within layout (old `movewindow` dispatcher).
 -- Confirmed pattern is hl.dsp.window.move({ workspace = N }) for sending to a
 -- workspace (used below) - the direction-swap variant isn't shown in the
 -- official example, so double check this fires like the old movewindow did.
-hl.bind(mainMod .. " + SHIFT + H", hl.dsp.window.move({ direction = "left" }))
-hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "down" }))
-hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "up" }))
-hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + LEFT", hl.dsp.window.move({ direction = "left" }))
+hl.bind(mainMod .. " + SHIFT + DOWN", hl.dsp.window.move({ direction = "down" }))
+hl.bind(mainMod .. " + SHIFT + UP", hl.dsp.window.move({ direction = "up" }))
+hl.bind(mainMod .. " + SHIFT + RIGHT", hl.dsp.window.move({ direction = "right" }))
 
 -- VERIFY: resize active window by pixel delta (old `resizeactive`, repeating
 -- while held via `binde`). Param names guessed as x/y - confirm with hyprctl eval.

@@ -6,7 +6,9 @@ ShellRoot {
     SettingsWindow {}
     Notifications {}
     PowerMenu {}
+    KeybindsWindow {}
     Bar {}
     Todo {}
     Wheel {}
+    EmojiPicker {}
 }

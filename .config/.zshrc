@@ -61,5 +61,22 @@ ZSH_HIGHLIGHT_STYLES[comment]='fg=240'
 ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=245'
 
 
-# 43PR theme controller
-theme() { python3 "$HOME/.config/43pr/bin/theme.py" "$@"; }
+# DAPHEEN theme controller
+theme() { python3 "$HOME/.config/dapheen/bin/theme.py" "$@"; }
+
+# Ctrl + Backspace: delete previous word
+bindkey '^H' backward-kill-word
+
+export PATH=$PATH:/home/dapheen/.spicetify
+
+# --------------------------------------------------
+# Kitty / Zsh word navigation
+# --------------------------------------------------
+
+# Ctrl + Left/Right: move by word
+bindkey '^[[1;5D' backward-word
+bindkey '^[[1;5C' forward-word
+
+# Alternative escape sequences sent by some terminals
+bindkey '^[[5D' backward-word
+bindkey '^[[5C' forward-word

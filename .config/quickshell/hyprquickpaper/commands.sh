@@ -6,6 +6,12 @@ img="$1"
 
 awww img "$img" -t random --transition-duration 1
 
-mkdir -p "$HOME/.cache/43pr"
-setsid -f python3 "$HOME/.config/43pr/bin/theme.py" wallpaper "$img" \
-    >>"$HOME/.cache/43pr/theme.log" 2>&1
+mkdir -p "$HOME/.cache/dapheen"
+
+setsid -f bash -c '
+    python3 "$HOME/.config/dapheen/bin/theme.py" wallpaper "$1" \
+        >>"$HOME/.cache/dapheen/theme.log" 2>&1 || exit 1
+
+    python3 "$HOME/.config/dapheen/bin/spicetify-sync.py" \
+        >>"$HOME/.cache/dapheen/theme.log" 2>&1
+' _ "$img" </dev/null >/dev/null 2>&1

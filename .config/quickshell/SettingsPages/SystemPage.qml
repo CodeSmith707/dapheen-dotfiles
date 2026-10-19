@@ -439,9 +439,9 @@ Item {
 
                     Image {
                         anchors.centerIn: parent
-                        source: page.homeDir ? "file://" + page.homeDir + "/.config/quickshell/imgs/pfp3.png" : ""
-                        width: 140
-                        height: 140
+                        source: page.homeDir ? "file://" + page.homeDir + "/.config/quickshell/imgs/eva_01.png" : ""
+                        width: 150
+                        height: 150
                         fillMode: Image.PreserveAspectFit
                         smooth: true
                         mipmap: true
