@@ -25,13 +25,17 @@ This repository is my personal customization of the original [43PR/dotfiles](htt
 - **Top bar** - Customizing options, vertical bar, styles, calendar, controls for volume and media playback.
 - **Settings Menu** — System, network, bluetooth, display, audio, storage, themes, and more.
 - **Wallpaper picker & Dynamic Colors** — Custom wallpaper selector with automatic wallpaper-based color generation.
+- **Scroll View** — Scroll view plugin implemented to allow the user to see all workspaces at once.
 - **Preset Themes** — Default Monochrome, Nord, Tokyo Night, etc, and easily create your own. 
 - **App Launcher** — **Rofi** Application search, clipboard history, and opacity control.
+- **Cheat Sheet** — Cheat sheet to see all your keybindings quickly.
+- **Emoji Picker** — To use emoji in applications which do not have native emoji support.
 - **Zsh + Starship** — Customizable shell with autosuggestions and history.
 - **Customizable Power Menu** —  Custom power menu. 
 - **Notes / To do** —  Custom quick Notes/To-do. 
 - **Hyprlock** — Custom lock screen.
 - **Spotify + Spicetify** — Custom theme based on **text - darkthemer**, (modified).
+- **Discord + Vencord** — Custom theme.
 - **Custom Scripts** — Scripts for workflow and system management.
 
 > All programs: [packages.txt](packages.txt)
