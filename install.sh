@@ -314,9 +314,6 @@ fi
 info "Configuring Thunar as the default file manager..."
 
 if command -v thunar >/dev/null 2>&1; then
-    THUNAR_BIN="$(command -v thunar)"
-
-    # Set Thunar as the XDG default for directories.
     if command -v xdg-mime >/dev/null 2>&1; then
         xdg-mime default thunar.desktop inode/directory \
             || warning "Could not set Thunar as the directory handler."
@@ -327,22 +324,12 @@ if command -v thunar >/dev/null 2>&1; then
         warning "xdg-mime is unavailable; skipping MIME defaults."
     fi
 
-    # Prefer Thunar for D-Bus clients such as Firefox's "Show in Folder".
-    # This is user-local and does not remove or modify system package files.
-    DBUS_SERVICE_DIR="$HOME/.local/share/dbus-1/services"
-    DBUS_SERVICE="$DBUS_SERVICE_DIR/org.freedesktop.FileManager1.service"
-
-    mkdir -p "$DBUS_SERVICE_DIR"
-
-    if cat > "$DBUS_SERVICE" <<EOF
-[D-BUS Service]
-Name=org.freedesktop.FileManager1
-Exec=$THUNAR_BIN --daemon
-EOF
-    then
-        success "Thunar configured as the default file manager."
+    # Thunar's packaged D-Bus service provides
+    # org.freedesktop.FileManager1. Do not create a competing override.
+    if [[ -f /usr/share/dbus-1/services/org.xfce.Thunar.FileManager1.service ]]; then
+        success "Thunar D-Bus file-manager service is installed."
     else
-        warning "Could not create the user-level FileManager1 service."
+        warning "Thunar's FileManager1 D-Bus service was not found."
     fi
 else
     warning "Thunar is not installed; skipping file-manager configuration."
