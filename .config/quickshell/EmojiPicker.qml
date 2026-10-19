@@ -1,0 +1,900 @@
+import Quickshell
+import QtQuick
+import QtQuick.Controls
+import Quickshell.Io
+import Quickshell.Wayland
+
+// Emoji picker overlay.
+PanelWindow {
+    id: root
+
+    property string searchText: ""
+    property string selectedCategory: "All"
+    property string copiedEmoji: ""
+    property bool gridMode: false
+    property string navigationArea: "search"
+    property int categoryIndex: 0
+    property int emojiIndex: 0
+
+    // Dragging state and position. Negative coordinates mean "center me".
+    // The last position is saved in state/emoji-picker-state.json.
+    property bool dragging: false
+    property bool positionStateReady: false
+    property real pickerX: -1
+    property real pickerY: -1
+    readonly property string positionStatePath:
+        Quickshell.env("HOME") + "/.config/quickshell/state/emoji-picker-state.json"
+
+    // Move the panel while keeping it within the overlay's available bounds.
+    function setPosition(x, y) {
+        if (root.width <= 0 || root.height <= 0) {
+            root.pickerX = x
+            root.pickerY = y
+            return
+        }
+
+        root.pickerX = Math.max(0, Math.min(root.width - pickerPanel.width, x))
+        root.pickerY = Math.max(0, Math.min(root.height - pickerPanel.height, y))
+    }
+
+    // Restore the default centered placement; negative coordinates mean "center me".
+    function resetPosition() {
+        root.pickerX = -1
+        root.pickerY = -1
+        savePositionTimer.restart()
+    }
+
+    // Keyboard-navigation helpers move focus between search, categories, and emojis.
+    function focusSearch() {
+        navigationArea = "search"
+        searchField.forceActiveFocus()
+        searchField.cursorPosition = searchField.text.length
+    }
+
+    function focusCategories() {
+        navigationArea = "categories"
+        categoryFlick.forceActiveFocus()
+        const item = categoryRepeater.itemAt(categoryIndex)
+        if (item && item.x !== undefined) {
+            categoryFlick.contentX = Math.max(
+                0,
+                Math.min(item.x, categoryFlick.contentWidth - categoryFlick.width)
+            )
+        }
+    }
+
+
+    function focusEmojis() {
+        navigationArea = "emojis"
+
+        if (filteredEmoji.length > 0) {
+            emojiIndex = Math.max(
+                0,
+                Math.min(emojiIndex, filteredEmoji.length - 1)
+            )
+
+            if (gridMode) {
+                emojiGrid.forceActiveFocus()
+                emojiGrid.currentIndex = emojiIndex
+                emojiGrid.positionViewAtIndex(
+                    emojiIndex,
+                    GridView.Contain
+                )
+            } else {
+                emojiList.forceActiveFocus()
+                emojiList.currentIndex = emojiIndex
+                emojiList.positionViewAtIndex(
+                    emojiIndex,
+                    ListView.Contain
+                )
+            }
+        } else {
+            if (gridMode) {
+                emojiGrid.forceActiveFocus()
+            } else {
+                emojiList.forceActiveFocus()
+            }
+        }
+    }
+
+
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
+
+    color: "transparent"
+    visible: false
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.namespace: "emoji-picker"
+    WlrLayershell.keyboardFocus: root.visible
+        ? WlrKeyboardFocus.Exclusive
+        : WlrKeyboardFocus.None
+
+    // Open or close the picker. Reset the query and selection whenever it opens.
+    function toggle() {
+        visible = !visible
+        if (visible) {
+            searchField.text = ""
+            searchText = ""
+            selectedCategory = "All"
+            categoryIndex = 0
+            emojiIndex = 0
+            navigationArea = "search"
+            // Wait until the overlay has acquired keyboard focus before focusing input.
+            Qt.callLater(function() { searchField.forceActiveFocus() })
+        }
+    }
+
+    function hide() {
+        visible = false
+    }
+
+    // Copy the chosen emoji, close the overlay, and paste into the previous app.
+    function copyEmoji(value) {
+        // Set the clipboard while the picker still owns keyboard focus, then
+        // close it and send Ctrl+V to the previously focused application.
+        Quickshell.clipboardText = value
+        copiedEmoji = value
+        hide()
+        Quickshell.execDetached(["sh", "-c", "sleep 0.05; command -v wtype >/dev/null 2>&1 && wtype -M ctrl -P v -m ctrl -p v"])
+    }
+
+    readonly property var categories: ["All", "Smileys", "People", "Animals", "Food", "Travel", "Activities", "Objects", "Symbols", "Flags"]
+
+    // Read the bundled Unicode Emoji JSON dataset from ~/.config/quickshell/data/emojis.json.
+    // Keep this file beside EmojiPicker.qml, with the data/ directory alongside it.
+    FileView {
+        id: emojiJsonFile
+        path: Qt.resolvedUrl("./data/emojis.json")
+        blockLoading: true
+    }
+
+    // Flatten the bundled emoji dataset into one searchable list.
+    // Supports both the current array-of-groups format and the older object format.
+    readonly property var emojiData: {
+        if (!emojiJsonFile.loaded)
+            return []
+
+        const data = JSON.parse(emojiJsonFile.text())
+        const result = []
+
+        // Current format: [{ category: "...", emojis: [...] }, ...]
+        // Older format: { "Category": [...], ... }
+        const groups = Array.isArray(data)
+        ? data.map(function(group) {
+            return {
+                name: group.category || group.name || "",
+                emojis: group.emojis || []
+            }
+        })
+        : Object.keys(data).map(function(name) {
+            return {
+                name: name,
+                emojis: data[name]
+            }
+        })
+
+        for (let g = 0; g < groups.length; g++) {
+            const group = groups[g]
+            const entries = group.emojis
+
+            for (let i = 0; i < entries.length; i++) {
+                const item = entries[i]
+                const groupName = item.group || group.name
+
+                result.push({
+                    emoji: item.emoji,
+                    name: item.name || item.slug || "",
+                    category: root.categoryForGroup(groupName),
+                    group: groupName,
+                    slug: item.slug || ""
+                })
+            }
+        }
+
+        return result
+    }
+
+    function categoryForGroup(group) {
+        if (group === "Smileys & Emotion") return "Smileys"
+        if (group === "People & Body") return "People"
+        if (group === "Animals & Nature") return "Animals"
+        if (group === "Food & Drink") return "Food"
+        if (group === "Travel & Places") return "Travel"
+        if (group === "Activities") return "Activities"
+        if (group === "Objects") return "Objects"
+        if (group === "Symbols") return "Symbols"
+        if (group === "Flags") return "Flags"
+        if (group === "Component") return "Objects"
+        return "Symbols"
+    }
+
+    // Apply category filtering when the search is empty; searches span all categories.
+    readonly property var filteredEmoji: {
+        // Read the TextInput directly so the filter always follows the visible query.
+        const query = String(searchField.text || "").trim().toLowerCase().replace(/[_-]+/g, " ")
+        const source = root.emojiData
+        return source.filter(function(item) {
+            // Searching always spans every category; category selection applies only when empty.
+            const categoryMatches = query.length > 0 || root.selectedCategory === "All" || item.category === root.selectedCategory
+            const searchable = [item.name || "", item.slug || "", item.group || "", item.category || "", item.searchable || "", item.emoji || ""]
+            .join(" ").toLowerCase().replace(/[_-]+/g, " ")
+            const searchMatches = query.length === 0 || searchable.indexOf(query) !== -1
+            return categoryMatches && searchMatches
+        })
+    }
+
+    // Main picker surface. Its x/y bindings use saved coordinates when available,
+    // otherwise the panel starts centered in the overlay.
+    Rectangle {
+        id: pickerPanel
+        x: root.pickerX < 0 ? (root.width - width) / 2 : root.pickerX
+        y: root.pickerY < 0 ? (root.height - height) / 2 : root.pickerY
+        width: 420
+        height: 460
+        color: Theme.bgPanel
+        radius: Theme.radius
+        border.color: Theme.borderAccent
+        border.width: 1
+        clip: true
+        // Matching the Rofi theme: transparent-looking surfaces, lavender accents,
+        // Iosevka text, restrained borders and rounded corners.
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: Math.max(0, Theme.radius - 1)
+            color: "transparent"
+            border.color: Theme.border
+            border.width: 1
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 10
+
+            // Header uses an Item as the positioning container. The title row
+            // and grid toggle are positioned independently so no anchors are
+            // applied to children managed by a Row.
+            Item {
+                id: pickerHeader
+                width: parent.width
+                height: 24
+
+                // The title is display-only. Dragging is deliberately restricted
+                // to the small handle at the horizontal center of the header.
+                Item {
+                    id: titleDragArea
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: titleRow.implicitWidth
+                    height: parent.height
+
+                    Row {
+                        id: titleRow
+                        anchors.fill: parent
+                        spacing: 8
+
+                        Text {
+                            text: "󰞅"
+                            color: Theme.accent
+                            font.family: Theme.iconFont
+                            font.pixelSize: 18
+                            height: parent.height
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        Text {
+                            text: "EMOJI PICKER"
+                            color: Theme.text
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            font.weight: Font.Medium
+                            font.bold: true
+                            font.letterSpacing: 2
+                            height: parent.height
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
+
+                Item {
+                    width: 28
+                    height: 24
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.gridMode = !root.gridMode
+                    }
+
+                    Grid {
+                        anchors.centerIn: parent
+                        columns: 3
+                        spacing: 3
+
+                        Repeater {
+                            model: 9
+
+                            Rectangle {
+                                width: 3
+                                height: 3
+                                radius: 1.5
+                                color: root.gridMode ? Theme.accent : Theme.textDim
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: Theme.border
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 38
+                radius: 8
+                color: Theme.bg
+                border.color: searchField.activeFocus ? Theme.accent : "transparent"
+                border.width: 1
+
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 10
+                    spacing: 9
+
+                    Text {
+                        text: ""
+                        color: Theme.textDim
+                        font.family: Theme.iconFont
+                        font.pixelSize: 11
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    TextInput {
+                        id: searchField
+                        width: parent.width - 24
+                        height: parent.height
+                        color: Theme.text
+                        selectionColor: Theme.accent2
+                        selectedTextColor: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        verticalAlignment: TextInput.AlignVCenter
+                        focus: root.visible
+                        activeFocusOnTab: true
+
+                        onTextChanged: {
+                            root.searchText = text
+                            root.emojiIndex = 0
+                            emojiList.currentIndex = 0
+                            emojiList.positionViewAtBeginning()
+                        }
+                        Keys.onEscapePressed: root.hide()
+                        Keys.onTabPressed: {
+                            event.accepted = true
+                            root.focusCategories()
+                        }
+                        Keys.onBacktabPressed: {
+                            event.accepted = true
+                            root.focusEmojis()
+                        }
+                        Keys.onReturnPressed: {
+                            event.accepted = true
+                            if (root.filteredEmoji.length > 0)
+                            root.copyEmoji(root.filteredEmoji[0].emoji)
+                        }
+                        Keys.onEnterPressed: {
+                            event.accepted = true
+                            if (root.filteredEmoji.length > 0)
+                            root.copyEmoji(root.filteredEmoji[0].emoji)
+                        }
+                    }
+                }
+            }
+
+            Flickable {
+                id: categoryFlick
+                width: parent.width
+                height: 30
+                contentWidth: categoryRow.implicitWidth
+                contentHeight: height
+                clip: true
+                focus: root.visible && root.navigationArea === "categories"
+                activeFocusOnTab: true
+
+                Keys.onTabPressed: {
+                    event.accepted = true
+                    root.focusEmojis()
+                }
+                Keys.onBacktabPressed: {
+                    event.accepted = true
+                    root.focusSearch()
+                }
+                Keys.onLeftPressed: {
+                    event.accepted = true
+                    root.categoryIndex = Math.max(0, root.categoryIndex - 1)
+                    root.selectedCategory = root.categories[root.categoryIndex]
+                    const item = categoryRepeater.itemAt(root.categoryIndex)
+                    if (item)
+                    categoryFlick.contentX = Math.max(0, Math.min(item.x, categoryFlick.contentWidth - categoryFlick.width))
+                    root.emojiIndex = 0
+                    emojiList.currentIndex = 0
+                }
+                Keys.onRightPressed: {
+                    event.accepted = true
+                    root.categoryIndex = Math.min(root.categories.length - 1, root.categoryIndex + 1)
+                    root.selectedCategory = root.categories[root.categoryIndex]
+                    const item = categoryRepeater.itemAt(root.categoryIndex)
+                    if (item)
+                    categoryFlick.contentX = Math.max(0, Math.min(item.x, categoryFlick.contentWidth - categoryFlick.width))
+                    root.emojiIndex = 0
+                    emojiList.currentIndex = 0
+                }
+                boundsBehavior: Flickable.StopAtBounds
+
+                // Only the category strip handles wheel input; keep its scroll
+                // position clamped to the available horizontal content.
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+
+                    onWheel: event => {
+                        const maxX = Math.max(0, categoryFlick.contentWidth - categoryFlick.width)
+                        const delta = event.angleDelta.y !== 0
+                        ? event.angleDelta.y
+                        : event.angleDelta.x
+
+                        if (maxX <= 0) {
+                            event.accepted = true
+                            return
+                        }
+
+                        categoryFlick.contentX = Math.max(
+                        0,
+                        Math.min(maxX, categoryFlick.contentX - delta * 0.35)
+                        )
+                        event.accepted = true
+                    }
+                }
+
+                Row {
+                    id: categoryRow
+                    height: parent.height
+                    spacing: 6
+
+                    Repeater {
+                        id: categoryRepeater
+                        model: root.categories
+                        delegate: Rectangle {
+                            required property string modelData
+                            width: categoryLabel.implicitWidth + 20
+                            height: 28
+                            radius: 8
+                            color: root.selectedCategory === modelData ? Theme.accent2 : "transparent"
+                            border.color: root.selectedCategory === modelData ? Theme.accent : Theme.border
+                            border.width: 1
+
+                            Text {
+                                id: categoryLabel
+                                anchors.centerIn: parent
+                                text: modelData.toUpperCase()
+                                color: root.selectedCategory === modelData ? Theme.bgPanel : Theme.textDim
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 9
+                                font.bold: root.selectedCategory === modelData
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton
+                                cursorShape: Qt.PointingHandCursor
+
+                                onClicked: {
+                                    root.categoryIndex = root.categories.indexOf(modelData);
+                                    root.selectedCategory = modelData;
+                                    root.emojiIndex = 0;
+                                    emojiList.currentIndex = 0;
+                                    root.navigationArea = "categories";
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+
+            GridView {
+                id: emojiGrid
+                width: parent.width
+                height: Math.max(100, parent.height - 24 - 1 - 38 - 30 - 10 * 4)
+                visible: root.gridMode
+                clip: true
+                cellWidth: 42
+                cellHeight: 42
+                model: root.filteredEmoji
+                boundsBehavior: Flickable.StopAtBounds
+
+                focus: root.visible && root.navigationArea === "emojis" && root.gridMode
+                activeFocusOnTab: true
+                currentIndex: root.emojiIndex
+
+                function moveSelection(nextIndex) {
+                    if (count === 0)
+                        return
+
+                    root.emojiIndex = Math.max(0, Math.min(nextIndex, count - 1))
+                    currentIndex = root.emojiIndex
+                    positionViewAtIndex(root.emojiIndex, GridView.Contain)
+                }
+
+                Keys.onLeftPressed: {
+                    event.accepted = true
+                    moveSelection(root.emojiIndex - 1)
+                }
+
+                Keys.onRightPressed: {
+                    event.accepted = true
+                    moveSelection(root.emojiIndex + 1)
+                }
+
+                Keys.onUpPressed: {
+                    event.accepted = true
+                    const columns = Math.max(1, Math.floor(width / cellWidth))
+                    moveSelection(root.emojiIndex - columns)
+                }
+
+                Keys.onDownPressed: {
+                    event.accepted = true
+                    const columns = Math.max(1, Math.floor(width / cellWidth))
+                    moveSelection(root.emojiIndex + columns)
+                }
+
+                Keys.onReturnPressed: {
+                    event.accepted = true
+                    if (count > 0 && root.emojiIndex < count)
+                        root.copyEmoji(root.filteredEmoji[root.emojiIndex].emoji)
+                }
+
+                Keys.onEnterPressed: {
+                    event.accepted = true
+                    if (count > 0 && root.emojiIndex < count)
+                        root.copyEmoji(root.filteredEmoji[root.emojiIndex].emoji)
+                }
+
+                delegate: Rectangle {
+                    required property var modelData
+                    required property int index
+
+                    width: emojiGrid.cellWidth
+                    height: emojiGrid.cellHeight
+                    radius: 7
+
+                    readonly property bool keyboardSelected:
+                        emojiGrid.activeFocus && emojiGrid.currentIndex === index
+
+                    color: (emojiHover.containsMouse || keyboardSelected)
+                        ? Theme.accent2
+                        : "transparent"
+
+                    border.width: keyboardSelected ? 2 : 0
+                    border.color: keyboardSelected ? Theme.borderAccent : "transparent"
+                    clip: true
+
+                    Text {
+                        anchors.fill: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: modelData.emoji
+                        font.pixelSize: 25
+                        minimumPixelSize: 18
+                        fontSizeMode: Text.Fit
+                        renderType: Text.QtRendering
+                    }
+
+                    MouseArea {
+                        id: emojiHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onEntered: {
+                            root.emojiIndex = index
+                            emojiGrid.currentIndex = index
+                        }
+
+                        onClicked: root.copyEmoji(modelData.emoji)
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: emojiGrid.count === 0
+                    text: "NO EMOJI FOUND"
+                    color: Theme.textDim
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                }
+            }
+
+            ListView {
+                id: emojiList
+                visible: !root.gridMode
+                width: parent.width
+                height: Math.max(100, parent.height - 24 - 1 - 38 - 30 - 10 * 4)
+                clip: true
+                spacing: 4
+                model: root.filteredEmoji
+                currentIndex: root.emojiIndex
+                focus: root.visible && root.navigationArea === "emojis"
+                activeFocusOnTab: true
+                Keys.onTabPressed: {
+                    event.accepted = true
+                    root.focusSearch()
+                }
+                Keys.onBacktabPressed: {
+                    event.accepted = true
+                    root.focusCategories()
+                }
+                Keys.onUpPressed: {
+                    event.accepted = true
+                    if (root.filteredEmoji.length > 0) {
+                        root.emojiIndex = Math.max(0, root.emojiIndex - 1)
+                        emojiList.currentIndex = root.emojiIndex
+                        emojiList.positionViewAtIndex(root.emojiIndex, ListView.Contain)
+                    }
+                }
+                Keys.onDownPressed: {
+                    event.accepted = true
+                    if (root.filteredEmoji.length > 0) {
+                        root.emojiIndex = Math.min(root.filteredEmoji.length - 1, root.emojiIndex + 1)
+                        emojiList.currentIndex = root.emojiIndex
+                        emojiList.positionViewAtIndex(root.emojiIndex, ListView.Contain)
+                    }
+                }
+                Keys.onReturnPressed: {
+                    event.accepted = true
+                    if (root.filteredEmoji.length > 0)
+                    root.copyEmoji(root.filteredEmoji[root.emojiIndex].emoji)
+                }
+                Keys.onEnterPressed: {
+                    event.accepted = true
+                    if (root.filteredEmoji.length > 0)
+                    root.copyEmoji(root.filteredEmoji[root.emojiIndex].emoji)
+                }
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                    width: 4
+                    contentItem: Rectangle {
+                        radius: 2
+                        color: Theme.accent
+                    }
+                    background: Rectangle { color: "transparent" }
+                }
+
+                delegate: Rectangle {
+                    required property var modelData
+                    required property int index
+                    width: emojiList.width - 6
+                    height: 42
+                    radius: 8
+                    color: (hoverArea.containsMouse || (root.navigationArea === "emojis" && emojiList.activeFocus && index === root.emojiIndex)) ? Theme.accent2 : "transparent"
+                    border.color: (hoverArea.containsMouse || (root.navigationArea === "emojis" && emojiList.activeFocus && index === root.emojiIndex)) ? Theme.borderAccent : "transparent"
+                    border.width: 1
+
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 12
+
+                        Text {
+                            text: modelData.emoji
+                            font.pixelSize: 23
+                            width: 40
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Column {
+                            width: parent.width - 60
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
+
+                            Text {
+                                text: modelData.name
+                                color: (hoverArea.containsMouse || (root.navigationArea === "emojis" && emojiList.activeFocus && index === root.emojiIndex)) ? Theme.bgPanel : Theme.text
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 11
+                                elide: Text.ElideRight
+                                width: parent.width
+                            }
+
+                            Text {
+                                text: modelData.category.toUpperCase()
+                                color: (hoverArea.containsMouse || (root.navigationArea === "emojis" && emojiList.activeFocus && index === root.emojiIndex)) ? Theme.bgPanel : Theme.textDim
+                                font.family: Theme.fontFamily
+                                font.pixelSize: 8
+                                font.letterSpacing: 1
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: hoverArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.copyEmoji(modelData.emoji)
+                    }
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: emojiList.count === 0
+                    text: "NO EMOJI FOUND"
+                    color: Theme.textDim
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    font.letterSpacing: 1
+                }
+            }
+
+            Text {
+                width: parent.width
+                text: root.filteredEmoji.length + " RESULTS  ·  CLICK TO INSERT"
+                color: Theme.textDim
+                font.family: Theme.fontFamily
+                font.pixelSize: 9
+                horizontalAlignment: Text.AlignRight
+            }
+        }
+
+        Keys.onEscapePressed: root.hide()
+    }
+
+
+    // Floating drag handle above the picker. The larger invisible MouseArea makes
+    // the handle easier to grab; the small black pill appears only on hover or drag.
+    Item {
+        id: floatingDragHandle
+
+        x: pickerPanel.x + (pickerPanel.width - width) / 2
+        y: Math.max(0, pickerPanel.y - 14)
+        width: 100
+        height: 20
+        z: 10000
+        visible: root.visible
+
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: 2
+            width: 36
+            height: 4
+            radius: 2
+            color: "#000000"
+            visible: handleMouse.containsMouse || root.dragging
+        }
+
+        MouseArea {
+            id: handleMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton
+            preventStealing: true
+
+            cursorShape: pressed ? Qt.ClosedHandCursor
+                                 : containsMouse ? Qt.OpenHandCursor
+                                                 : Qt.ArrowCursor
+
+            // Record the pointer's global position and the panel's starting position.
+            // Global coordinates remain stable as the handle moves with the panel.
+            property real pressX: 0
+            property real pressY: 0
+            property real startX: 0
+            property real startY: 0
+
+            onPressed: function(mouse) {
+                const p = mapToGlobal(mouse.x, mouse.y)
+                pressX = p.x
+                pressY = p.y
+                startX = pickerPanel.x
+                startY = pickerPanel.y
+                root.dragging = true
+            }
+
+            onPositionChanged: function(mouse) {
+                if (!pressed || !root.dragging)
+                    return
+
+                const p = mapToGlobal(mouse.x, mouse.y)
+                root.setPosition(
+                    startX + p.x - pressX,
+                    startY + p.y - pressY
+                )
+            }
+
+            onReleased: {
+                root.dragging = false
+                savePositionTimer.restart()
+            }
+
+            onCanceled: {
+                root.dragging = false
+                savePositionTimer.restart()
+            }
+
+            onDoubleClicked: {
+                root.dragging = false
+                root.resetPosition()
+            }
+        }
+    }
+
+
+    // Load the last panel position from disk and persist changes after dragging.
+    FileView {
+        id: positionStateFile
+        path: root.positionStatePath
+        printErrors: false
+
+        adapter: JsonAdapter {
+            property real pickerX: -1
+            property real pickerY: -1
+        }
+
+        onLoaded: {
+            if (positionStateFile.adapter.pickerX >= 0 && positionStateFile.adapter.pickerY >= 0) {
+                root.setPosition(
+                    positionStateFile.adapter.pickerX,
+                    positionStateFile.adapter.pickerY
+                )
+            }
+            root.positionStateReady = true
+        }
+
+        onLoadFailed: error => {
+            if (error === FileViewError.FileNotFound) {
+                root.positionStateReady = true
+                savePositionTimer.restart()
+            }
+        }
+    }
+
+    Timer {
+        id: savePositionTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            if (!root.positionStateReady)
+                return
+            positionStateFile.adapter.pickerX = root.pickerX
+            positionStateFile.adapter.pickerY = root.pickerY
+            positionStateFile.writeAdapter()
+        }
+    }
+
+    IpcHandler {
+        target: "emoji"
+
+        function toggle(): void {
+            root.toggle()
+        }
+
+        function hide(): void {
+            root.visible = false
+        }
+    }
+}

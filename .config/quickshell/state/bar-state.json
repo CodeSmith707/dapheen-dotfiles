@@ -1,0 +1,15 @@
+{
+    "bgOpacity": 1,
+    "border": false,
+    "margin": 4,
+    "position": "top",
+    "scale": 1,
+    "showBattery": true,
+    "showMedia": true,
+    "showNet": true,
+    "showStats": true,
+    "showVolume": true,
+    "showWs": true,
+    "style": "floating",
+    "thickness": 20
+}
