@@ -65,7 +65,7 @@ These dotfiles use **Super (Windows key)** as the main modifier for most shortcu
 |---|---|
 | `Super + Grave (\`)` | Toggle power menu |
 | `Super + I` | Toggle settings |
-| `Super + Comma (,)` | Toggle emoji picker |
+| `Super + ,` | Toggle emoji picker |
 | `Super + W` | Open wallpaper picker |
 | `Super + N` | Toggle notifications |
 | `Super + C` | Toggle TODO widget |
