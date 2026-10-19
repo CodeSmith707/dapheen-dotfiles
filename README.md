@@ -14,11 +14,16 @@ This repository is my personal customization of the original [43PR/dotfiles](htt
 
 </div>
 
-**v1.2.0**
+## Screenshots
 
-<img width="1920" height="1080" alt="v1 2 0" src="https://github.com/user-attachments/assets/3b4857bc-285a-473a-924c-be89dab714b9" />
+### Quickshell Widgets
+![Quickshell widgets — keybindings, settings, emoji picker, and power menu](assets/screenshots/desktop-quickshell-widgets.png)
 
-<img width="1920" height="1080" alt="1791338767" src="https://github.com/user-attachments/assets/d2b9999a-9939-410d-9980-11e97b448d78" />
+### Discord and Spotify
+![Customized Discord and Spotify themes](assets/screenshots/desktop-discord-spotify.png)
+
+### Terminal and System Monitor
+![Customized terminal and system monitor](assets/screenshots/desktop-terminal-system-monitor.png)
 
 ## Features
 
