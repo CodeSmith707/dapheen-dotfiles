@@ -41,6 +41,7 @@ This repository is my personal customization of the original [43PR/dotfiles](htt
 - **Hyprlock** — Custom lock screen.
 - **Spotify + Spicetify** — Custom theme based on **text - darkthemer**, (modified).
 - **Discord + Vencord** — Custom theme.
+- **Satty** — Rust based screen shot tool, provides better user experience and more features.
 - **Custom Scripts** — Scripts for workflow and system management.
 
 > All programs: [packages.txt](packages.txt)
