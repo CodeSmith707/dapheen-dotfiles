@@ -306,6 +306,48 @@ if [[ "$BACKED_UP_COUNT" -gt 0 ]]; then
     printf '  %s\n' "$BACKUP_DIR"
 fi
 
+
+# --------------------------------------------------
+# Default file manager: Thunar
+# --------------------------------------------------
+
+info "Configuring Thunar as the default file manager..."
+
+if command -v thunar >/dev/null 2>&1; then
+    THUNAR_BIN="$(command -v thunar)"
+
+    # Set Thunar as the XDG default for directories.
+    if command -v xdg-mime >/dev/null 2>&1; then
+        xdg-mime default thunar.desktop inode/directory \
+            || warning "Could not set Thunar as the directory handler."
+
+        xdg-mime default thunar.desktop application/x-directory \
+            || warning "Could not set Thunar for application/x-directory."
+    else
+        warning "xdg-mime is unavailable; skipping MIME defaults."
+    fi
+
+    # Prefer Thunar for D-Bus clients such as Firefox's "Show in Folder".
+    # This is user-local and does not remove or modify system package files.
+    DBUS_SERVICE_DIR="$HOME/.local/share/dbus-1/services"
+    DBUS_SERVICE="$DBUS_SERVICE_DIR/org.freedesktop.FileManager1.service"
+
+    mkdir -p "$DBUS_SERVICE_DIR"
+
+    if cat > "$DBUS_SERVICE" <<EOF
+[D-BUS Service]
+Name=org.freedesktop.FileManager1
+Exec=$THUNAR_BIN --daemon
+EOF
+    then
+        success "Thunar configured as the default file manager."
+    else
+        warning "Could not create the user-level FileManager1 service."
+    fi
+else
+    warning "Thunar is not installed; skipping file-manager configuration."
+fi
+
 # --------------------------------------------------
 # Papirus folder color
 # --------------------------------------------------
