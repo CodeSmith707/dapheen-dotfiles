@@ -220,35 +220,5 @@ Dowload and move wallpapers to Pictures/Wallpapers
 >
 > The installer will automatically update the existing symlinks to point to the new location.
 
----
-## Updating
-
-Pull the latest changes, then run the updater from inside the repository:
-
-```bash
-git pull
-./update.sh
-```
-
-Other options: `--dry-run` (preview changes), `--skip-packages`, `--skip-theme`.
-
-Dotfiles are symlinked so, `git pull` updates your live configs directly.
-
-You can check the reminders printed at the end of the run.
-
-> [!tip]
-> If any Quickshell (`.qml`) files changed in the pull, run:
->
-> ```bash
-> ./update.sh --restart-shell
-> ```
->
-> to restart Quickshell automatically.
-
-> [!note]
-> 
-> Custom-gpu parts are specific to my hardware.
->
-> For issues with the wallpaper picker, you can clear the cache from the Storage page in Settings.
 
 
