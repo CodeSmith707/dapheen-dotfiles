@@ -42,32 +42,126 @@ Just made some tweaks to it. Give it some love: [hyprquickpaper](https://github.
 
 ## Most used keybinds
 
-> **You can modify keybinds using HyprMod**
+## ⌨️ Custom Keybindings
 
-| Keybind                 | Action                    |
-| -----------             | ------------------------- |
-| `Super + T`             | Terminal                  |
-| `Super + Q`             | Close active window       |
-| `Super + D`             | Application launcher      |
-| `Super + Space`         | Toggle floating window    |
-| `Super + F`             | Toggle fullscreen         |
-| `Super + 1, 2, 3..`     | Change workspaces         |
-| `Super + Shift + 1, 2..`| Move window to workspace  |
-| `Super + E`             | File manager              |
-| `Super + B`             | Browser                   |
-| `Super + V`             | Clipboard history         |
-| `Super + S`             | Second launcher           |
-| `Super + I`             | Settings menu             |
-| `Super + W`             | Wallpaper selector        |
-| `Super + O`             | Switch opacity            |
-| `Super + Tab`           | Lock screen               |
-| `Super + Grave`         | Logout menu               |
-| `Super + Shift + W`     | Toggle bar                |
-| `Super + Mouse wheel`   | Zoom in/out               |
-| `Super + C`             | Notes/To-do               |
-| `Super + N`             | Notifications             |
-| `Delete`                | Screenshot fullscreen     |
-| `SHIFT + Delete`        | Screenshot area select    |
+These dotfiles use **Super (Windows key)** as the main modifier for most shortcuts. The bindings below reflect my customized Hyprland setup and Quickshell widgets.
+
+### Applications and Launchers
+
+| Shortcut | Action |
+|---|---|
+| `Super + T` | Open terminal (Kitty) |
+| `Super + D` | Toggle application launcher (Rofi) |
+| `Super + S` | Toggle wheel launcher |
+| `Super + E` | Open file manager |
+| `Super + B` | Open browser |
+| `Super + Q` | Close active window |
+| `Super + Tab` | Lock screen (Hyprlock) |
+| `Super + Shift + E` | Exit Hyprland |
+
+### Quickshell Widgets
+
+| Shortcut | Action |
+|---|---|
+| `Super + Grave (\`)` | Toggle power menu |
+| `Super + I` | Toggle settings |
+| `Super + Comma (,)` | Toggle emoji picker |
+| `Super + W` | Open wallpaper picker |
+| `Super + N` | Toggle notifications |
+| `Super + C` | Toggle TODO widget |
+| `Super + Shift + W` | Toggle status bar |
+| `Super + /` | Toggle keyboard shortcuts cheat sheet |
+| `Alt + Tab` | Toggle Scroll Overview for switching between windows |
+
+### Window Management
+
+| Shortcut | Action |
+|---|---|
+| `Super + F` | Toggle fullscreen |
+| `Super + Space` | Toggle floating mode; center and resize the window when floating |
+| `Super + O` | Run window opacity script |
+| `Super + Left` | Focus window to the left |
+| `Super + Right` | Focus window to the right |
+| `Super + Up` | Focus window above |
+| `Super + Down` | Focus window below |
+| `Super + Shift + Left` | Move active window left |
+| `Super + Shift + Right` | Move active window right |
+| `Super + Shift + Up` | Move active window up |
+| `Super + Shift + Down` | Move active window down |
+| `Super + Ctrl + H` | Resize active window horizontally, narrower |
+| `Super + Ctrl + L` | Resize active window horizontally, wider |
+| `Super + Ctrl + K` | Resize active window vertically, shorter |
+| `Super + Ctrl + J` | Resize active window vertically, taller |
+| `Super + Left Mouse Button (hold)` | Drag window |
+| `Super + Right Mouse Button (hold)` | Resize window |
+
+### Workspaces
+
+| Shortcut | Action |
+|---|---|
+| `Super + 1–9` | Switch to workspace 1–9 |
+| `Super + 0` | Switch to workspace 10 |
+| `Super + Shift + 1–9` | Move active window to workspace 1–9 |
+| `Super + Shift + 0` | Move active window to workspace 10 |
+
+### Themes and Appearance
+
+| Shortcut | Action |
+|---|---|
+| `Super + L` | Toggle light/dark theme |
+| `Super + O` | Run window opacity script |
+| `Super + Mouse Wheel Down` | Decrease cursor zoom |
+| `Super + Mouse Wheel Up` | Increase cursor zoom |
+| `Super + Keypad Zoom Keys` | Adjust cursor zoom using the configured keypad bindings |
+
+The cursor zoom is clamped between `1.0` and `1.5`.
+
+### Screenshots
+
+Screenshots use **grim, slurp, Satty, and wl-copy**.
+
+| Shortcut | Action |
+|---|---|
+| `Delete` | Capture fullscreen screenshot and open it in Satty |
+| `Shift + Delete` | Select a screen area and open the capture in Satty |
+
+Satty supports annotation and copying the resulting image to the clipboard. Screenshots are configured to save in `~/Pictures/`.
+
+### Clipboard and Keyboard
+
+| Shortcut | Action |
+|---|---|
+| `Super + V` | Open clipboard history through cliphist and Rofi |
+| `Super + X` | Switch to the next keyboard layout |
+
+### Media and Volume
+
+| Shortcut | Action |
+|---|---|
+| `Volume Up` | Increase volume by 5% |
+| `Volume Down` | Decrease volume by 5% |
+| `Mute` | Toggle audio mute |
+| `Play/Pause` | Toggle media playback |
+| `Next Track` | Skip to next track |
+| `Previous Track` | Return to previous track |
+
+Volume and media controls use `wpctl` and `playerctl`.
+
+### Screen Recording
+
+| Shortcut | Action |
+|---|---|
+| `Super + R` | Start or stop GPU screen recording |
+
+Screen recording uses `gpu-screen-recorder`, captures at 60 FPS, and saves recordings in `~/Videos/`. The current command targets `HDMI-A-1`, so this particular binding may need adjustment on other hardware.
+
+### Notes
+
+- `mainMod` is configured as `Super`.
+- The application launcher, wallpaper picker, emoji picker, settings, notifications, TODO widget, and other shell components depend on the installed Rofi and Quickshell configuration.
+- Some commands reference external utilities such as `cliphist`, `wl-copy`, `grim`, `slurp`, `satty`, `gpu-screen-recorder`, `wpctl`, and `playerctl`.
+- Workspace bindings cover workspaces 1 through 10.
+- The keypad zoom bindings use raw keycodes in the current configuration; their physical key labels depend on the keyboard.
 
 > [!note]
 >
